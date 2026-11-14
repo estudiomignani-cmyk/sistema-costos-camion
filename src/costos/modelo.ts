@@ -20,6 +20,8 @@ export interface Parametros {
   repuestosMes: number;
   cubiertas: { delanteras: Cubierta; traccion: Cubierta; acoplado: Cubierta };
   fijos: ItemFijo[];
+  /** Costos variables cargados a mano (importe mensual). */
+  otrosVariables?: ItemFijo[];
   aceites: Aceite[];
   filtros: Filtro[];
 }
@@ -63,7 +65,7 @@ export const PARAMETROS_POR_DEFECTO: Parametros = {
   ],
 };
 
-export type Categoria = 'fijo' | 'cubiertas' | 'gasoil' | 'sueldo' | 'repuestos' | 'aceites' | 'filtros';
+export type Categoria = 'fijo' | 'cubiertas' | 'gasoil' | 'sueldo' | 'repuestos' | 'otros' | 'aceites' | 'filtros';
 export interface ItemCosto { concepto: string; categoria: Categoria; tipo: 'fijo' | 'variable'; importe: number }
 
 export interface Resultado {
@@ -99,6 +101,7 @@ export function calcular(p: Parametros): Resultado {
     { concepto: 'Gasoil', categoria: 'gasoil', tipo: 'variable', importe: Math.round(litrosGasoil * p.precioGasoil) },
     { concepto: 'Sueldo chofer', categoria: 'sueldo', tipo: 'variable', importe: Math.round(toneladasMes * p.tarifaPorTn * p.porcentajeSueldoChofer) },
     { concepto: 'Repuestos y reparaciones', categoria: 'repuestos', tipo: 'variable', importe: p.repuestosMes },
+    ...(p.otrosVariables ?? []).map((x): ItemCosto => ({ concepto: x.concepto, categoria: 'otros', tipo: 'variable', importe: x.importe })),
     ...p.aceites.map((x): ItemCosto => ({ concepto: x.concepto, categoria: 'aceites', tipo: 'variable', importe: prorrateo(x.capacidadLts, x.precioLt, x.vidaUtilKm, km) })),
     ...p.filtros.map((x): ItemCosto => ({ concepto: x.concepto, categoria: 'filtros', tipo: 'variable', importe: prorrateo(x.cantidad, x.precio, x.vidaUtilKm, km) })),
   ];

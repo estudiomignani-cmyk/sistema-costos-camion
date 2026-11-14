@@ -45,7 +45,7 @@ const cambiosSchema = z.object({
     .describe('Modifica (o agrega si no existe) costos fijos mensuales por concepto'),
 }).describe('Solo incluir los parámetros que cambian');
 
-type Cambios = z.infer<typeof cambiosSchema>;
+export type Cambios = z.infer<typeof cambiosSchema>;
 
 function aplicarCambios(base: Parametros, c: Cambios): Parametros {
   const p = clonar(base);
@@ -66,7 +66,12 @@ function aplicarCambios(base: Parametros, c: Cambios): Parametros {
  * Crea el set de tools sobre un escenario mutable (estado de la sesión).
  * Se crea por sesión para que cada conversación tenga su propio escenario.
  */
-export function crearTools(escenarioInicial: Parametros = PARAMETROS_POR_DEFECTO) {
+export interface OpcionesTools {
+  /** Se llama cada vez que el agente aplica cambios permanentes al escenario. */
+  onActualizar?: (cambios: Cambios) => void;
+}
+
+export function crearTools(escenarioInicial: Parametros = PARAMETROS_POR_DEFECTO, opciones: OpcionesTools = {}) {
   let escenario = clonar(escenarioInicial);
 
   return {
@@ -86,7 +91,7 @@ export function crearTools(escenarioInicial: Parametros = PARAMETROS_POR_DEFECTO
       description: 'Lista los ítems de costo mensual ordenados de mayor a menor, con su porcentaje sobre el total. Permite filtrar por tipo o categoría.',
       inputSchema: z.object({
         tipo: z.enum(['fijo', 'variable']).optional(),
-        categoria: z.enum(['fijo', 'cubiertas', 'gasoil', 'sueldo', 'repuestos', 'aceites', 'filtros']).optional(),
+        categoria: z.enum(['fijo', 'cubiertas', 'gasoil', 'sueldo', 'repuestos', 'otros', 'aceites', 'filtros']).optional(),
         top: z.number().int().positive().optional().describe('Cantidad máxima de ítems a devolver'),
       }),
       execute: async ({ tipo, categoria, top }) => {
@@ -121,6 +126,7 @@ export function crearTools(escenarioInicial: Parametros = PARAMETROS_POR_DEFECTO
       inputSchema: z.object({ cambios: cambiosSchema }),
       execute: async ({ cambios }) => {
         escenario = aplicarCambios(escenario, cambios);
+        opciones.onActualizar?.(cambios);
         return { ok: true, aplicado: cambios, nuevoResumen: resumen(calcular(escenario)) };
       },
     }),

@@ -10,7 +10,7 @@
  */
 import { generateText, stepCountIs, type LanguageModel, type ModelMessage, type StepResult } from 'ai';
 import { google } from '@ai-sdk/google';
-import { crearTools, type ToolsAgente } from './tools';
+import { crearTools, type Cambios, type ToolsAgente } from './tools';
 import type { Parametros } from '../costos/modelo';
 
 export const MODELO_POR_DEFECTO = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
@@ -38,15 +38,19 @@ export interface OpcionesAgente {
   modelo?: LanguageModel;
   maxPasos?: number;
   escenario?: Parametros;
+  /** Mensajes previos de la conversación (memoria). */
+  historial?: ModelMessage[];
   /** Se invoca al terminar cada paso del ciclo (útil para mostrar la traza ReAct). */
   onPaso?: (paso: PasoReAct, numero: number) => void | Promise<void>;
+  /** Se invoca cuando el agente aplica cambios permanentes al escenario. */
+  onActualizar?: (cambios: Cambios) => void;
 }
 
 export function crearAgente(opciones: OpcionesAgente = {}) {
   const modelo = opciones.modelo ?? google(MODELO_POR_DEFECTO);
   const maxPasos = opciones.maxPasos ?? MAX_PASOS_POR_DEFECTO;
-  const tools = crearTools(opciones.escenario);
-  const historial: ModelMessage[] = [];
+  const tools = crearTools(opciones.escenario, { onActualizar: opciones.onActualizar });
+  const historial: ModelMessage[] = [...(opciones.historial ?? [])];
 
   async function preguntar(pregunta: string) {
     historial.push({ role: 'user', content: pregunta });

@@ -5,7 +5,8 @@
   "scripts": {
     "agente": "tsx src/cli.ts",
     "test": "tsx --test test/*.test.ts",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "dev": "tsx scripts/dev.ts"
   },
   "repository": {
     "type": "git",
@@ -24,6 +25,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@netlify/functions": "^6.1.1",
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"

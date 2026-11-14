@@ -40,3 +40,20 @@ tiene su propio escenario de parámetros.
 | `calculadora` | Aritmética segura (el modelo no hace cuentas de cabeza) |
 
 El modelo de costos (`src/costos/modelo.ts`) replica las fórmulas de `index.html`.
+
+## Chat en la planilla web
+
+El botón **💬 Asistente** de `index.html` abre un panel de chat que conversa con el
+mismo agente, usando los datos cargados en la planilla en ese momento.
+
+- **Servidor**: `src/web/handler.ts`, publicado como Netlify Function en `/api/agente`
+  (`netlify/functions/agente.mts`). Responde en streaming (NDJSON), así el panel muestra
+  cada paso del ciclo ReAct a medida que ocurre.
+- **Clave**: se configura en Netlify → *Project configuration* → *Environment variables*
+  como `GOOGLE_GENERATIVE_AI_API_KEY`. Nunca llega al navegador.
+- **Cambios**: si le pedís al agente que cambie un valor, el cambio se aplica a la
+  planilla y queda guardado.
+- **Local**: `npm run dev` levanta la planilla y el endpoint en http://localhost:8888.
+
+El endpoint es público: cualquiera con el link puede usar el chat y consumir la cuota
+de Gemini. Cada pedido está limitado (20 mensajes, 2000 caracteres, 8 pasos).

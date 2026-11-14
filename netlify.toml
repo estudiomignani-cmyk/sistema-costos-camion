@@ -1,0 +1,8 @@
+[build]
+  # El sitio es estático: solo se publica index.html (no node_modules ni el código del agente).
+  command = "mkdir -p dist && cp index.html dist/"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
