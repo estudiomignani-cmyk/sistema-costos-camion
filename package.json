@@ -1,0 +1,34 @@
+{
+  "name": "sistema-costos-camion",
+  "version": "1.0.0",
+  "description": "Sistema de costos del camión + agente ReAct (AI SDK + Gemini)",
+  "scripts": {
+    "agente": "tsx src/cli.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc",
+    "dev": "tsx scripts/dev.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estudiomignani-cmyk/sistema-costos-camion.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/estudiomignani-cmyk/sistema-costos-camion/issues"
+  },
+  "homepage": "https://github.com/estudiomignani-cmyk/sistema-costos-camion#readme",
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.121",
+    "ai": "^7.0.173",
+    "dotenv": "^18.0.10",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^6.1.1",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "type": "module"
+}
