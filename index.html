@@ -161,6 +161,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:1.25rem 0}
   .add-row .field{width:100%!important}
   .tab-btn{padding:11px 12px;font-size:.78rem}
 }
+.data-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.save-status{color:rgba(255,255,255,.7);font-size:.75rem;margin-right:4px}
 </style>
 </head>
 <body>
@@ -169,6 +171,12 @@ hr.div{border:none;border-top:1px solid var(--border);margin:1.25rem 0}
   <div class="header-badge">Sistema de Costos · Transporte Propio</div>
   <h1>Fiat Cursor 330 <span>+ Acoplado Hermann</span></h1>
   <p class="subtitle">Productor Agropecuario · Análisis mensual y proyección anual · Costos por km y por tonelada</p>
+  <div class="data-bar">
+    <span id="save-status" class="save-status">Los cambios se guardan en este navegador</span>
+    <button class="btn xs" onclick="exportarDatos()">⬇ Exportar</button>
+    <label class="btn xs">⬆ Importar<input type="file" accept="application/json,.json" onchange="importarDatos(this)" hidden></label>
+    <button class="btn xs" onclick="restablecerDatos()">↺ Restablecer</button>
+  </div>
 </header>
 
 <div class="tab-nav">
@@ -508,9 +516,10 @@ function recalc(){
   const prD=gp('pr-del'), vuD=gp('vu-del'), qD=gp('q-del');
   const prT=gp('pr-trac'),vuT=gp('vu-trac'),qT=gp('q-trac');
   const prA=gp('pr-acop'),vuA=gp('vu-acop'),qA=gp('q-acop');
-  setVar('del','i',  Math.round(qD*prD/vuD*km)); setVar('del','q',qD);
-  setVar('trac','i', Math.round(qT*prT/vuT*km)); setVar('trac','q',qT);
-  setVar('acop','i', Math.round(qA*prA/vuA*km)); setVar('acop','q',qA);
+  const prorr=(q,pr,vu)=>km>0&&vu>0?Math.round(q*pr/vu*km):0;
+  setVar('del','i',  prorr(qD,prD,vuD)); setVar('del','q',qD);
+  setVar('trac','i', prorr(qT,prT,vuT)); setVar('trac','q',qT);
+  setVar('acop','i', prorr(qA,prA,vuA)); setVar('acop','q',qA);
 
   /* Gasoil */
   const lts=Math.round(km*gp('cons-gasoil')/100);
@@ -531,6 +540,7 @@ function recalc(){
   });
 
   renderAll(km, totalTn);
+  guardarEstado();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -552,7 +562,7 @@ function renderFijos(km,tn){
     tot+=f.i;
     const kv=km>0?f.i/km:0, tv=tn>0?f.i/tn:0;
     return`<tr>
-      <td><input type="text" value="${esc(f.c)}" onchange="fijos[${i}].c=this.value" style="font-size:.79rem"></td>
+      <td><input type="text" value="${esc(f.c)}" onchange="fijos[${i}].c=this.value;recalc()" style="font-size:.79rem"></td>
       <td><input type="number" value="${f.q}" min="0" step="any" onchange="fijos[${i}].q=parseFloat(this.value)||0" style="font-size:.79rem;width:58px"></td>
       <td><select onchange="fijos[${i}].u=this.value" style="font-size:.76rem;padding:4px 6px">${uOpts(f.u)}</select></td>
       <td><input type="number" value="${f.i}" min="0" onchange="fijos[${i}].i=parseFloat(this.value)||0;recalc()" style="font-size:.79rem;width:105px"></td>
@@ -577,19 +587,23 @@ function renderVarsTable(km,tn){
   document.getElementById('body-vars').innerHTML=allRows.map(row=>{
     tot+=row.i;
     const kv=km>0?row.i/km:0, tv=tn>0?row.i/tn:0;
-    const isAuto=(row.src==='var'&&row.key!=='repuestos')||(row.src==='aceite')||(row.src==='filtro');
+    const isAuto=(row.src==='var'&&row.key!=='repuestos'&&!String(row.key).startsWith('manual_'))||(row.src==='aceite')||(row.src==='filtro');
     const badge=isAuto?'<span class="auto-badge">auto</span>':'';
     /* Para vars manuales sólo permitimos editar importe */
     let iCell;
     if(row.src==='var'&&row.key==='repuestos'){
       iCell=`<input type="number" value="${row.i}" min="0"
-        onchange="setVar('repuestos','i',parseFloat(this.value)||0);recalc()"
+        onchange="document.getElementById('p-repuestos').value=parseFloat(this.value)||0;recalc()"
+        style="font-size:.79rem;width:105px">`;
+    } else if(row.src==='var'&&String(row.key).startsWith('manual_')){
+      iCell=`<input type="number" value="${row.i}" min="0"
+        onchange="vars[${row.idx}].i=parseFloat(this.value)||0;recalc()"
         style="font-size:.79rem;width:105px">`;
     } else {
       iCell=`<span class="mono" style="font-size:.79rem">$${fmt(row.i)}</span>`;
     }
     const delBtn=row.src==='var'&&['del','trac','acop','gasoil','sueldo','repuestos'].includes(row.key)?''
-      :`<button class="btn danger xs" onclick="${row.src==='aceite'?`aceites.splice(${row.idx},1)`:`filtros.splice(${row.idx},1)`};recalc()">✕</button>`;
+      :`<button class="btn danger xs" onclick="${({var:'vars',aceite:'aceites',filtro:'filtros'})[row.src]}.splice(${row.idx},1);recalc()">✕</button>`;
     return`<tr>
       <td><span style="font-size:.79rem;color:var(--text)">${esc(row.c)}</span>${badge}</td>
       <td class="mono" style="font-size:.75rem;color:var(--muted)">${row.q}</td>
@@ -690,7 +704,7 @@ function renderResumen(km,tn,vj,tar){
     const pct=totC>0?it.val/totC*100:0;
     const fill=it.tipo==='f'?'#2563eb':'#d97706';
     return`<div class="bar-row">
-      <div class="bar-label" title="${it.label}">${it.label}</div>
+      <div class="bar-label" title="${esc(it.label)}">${esc(it.label)}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round(it.val/maxV*100)}%;background:${fill}"></div></div>
       <div class="bar-pct">${fmtD(pct,1)}%</div>
       <div class="bar-amt">$${fmt(it.val)}</div>
@@ -746,9 +760,73 @@ function addVar(){
   ['nv-c','nv-q','nv-i'].forEach(id=>document.getElementById(id).value='');
   recalc();
 }
-function esc(s){return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+/* ═══════════════════════════════════════════════════
+   GUARDADO (localStorage) · EXPORTAR / IMPORTAR
+═══════════════════════════════════════════════════ */
+const STORAGE_KEY='costos-camion:v1';
+const paramInputs=()=>[...document.querySelectorAll('.param-field input[id]')];
+let cargando=false;
+
+function estadoActual(){
+  return {
+    version:1,
+    guardado:new Date().toISOString(),
+    params:Object.fromEntries(paramInputs().map(e=>[e.id,e.value])),
+    fijos, vars, aceites, filtros,
+  };
+}
+function aplicarEstado(st){
+  if(!st||typeof st!=='object'||!st.params) throw new Error('Archivo de datos inválido');
+  const lista=(x,ok)=>Array.isArray(x)&&x.every(ok)?x:null;
+  const esObj=o=>o&&typeof o==='object'&&typeof o.c==='string';
+  paramInputs().forEach(e=>{ if(st.params[e.id]!==undefined) e.value=st.params[e.id]; });
+  fijos  =lista(st.fijos,esObj)  ?? fijos;
+  aceites=lista(st.aceites,esObj)?? aceites;
+  filtros=lista(st.filtros,esObj)?? filtros;
+  const v=lista(st.vars,o=>esObj(o)&&typeof o.key==='string');
+  if(v){ // las filas base siempre existen; se conservan las manuales
+    const base=vars.filter(x=>!x.key.startsWith('manual_')).map(b=>({...b,...(v.find(x=>x.key===b.key)||{})}));
+    vars=[...base,...v.filter(x=>x.key.startsWith('manual_'))];
+  }
+}
+function guardarEstado(){
+  if(cargando) return;
+  try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(estadoActual())); marcarGuardado(); }catch(e){}
+}
+function marcarGuardado(){
+  const el=document.getElementById('save-status');
+  if(el) el.textContent='Guardado '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+}
+function cargarEstado(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){ cargando=true; aplicarEstado(JSON.parse(raw)); }
+  }catch(e){ console.warn('No se pudieron cargar los datos guardados',e); }
+  finally{ cargando=false; }
+}
+function exportarDatos(){
+  const blob=new Blob([JSON.stringify(estadoActual(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`costos-camion-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importarDatos(input){
+  const f=input.files[0]; if(!f) return;
+  f.text().then(t=>{
+    aplicarEstado(JSON.parse(t)); recalcSueldo();
+  }).catch(e=>alert('No se pudo importar: '+e.message)).finally(()=>{ input.value=''; });
+}
+function restablecerDatos(){
+  if(!confirm('¿Borrar los datos guardados y volver a los valores de ejemplo?')) return;
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+  location.reload();
+}
 
 /* INICIO */
+cargarEstado();
 recalcSueldo();
 </script>
 </body>
